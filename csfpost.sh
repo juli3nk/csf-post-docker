@@ -1,7 +1,22 @@
 #!/bin/bash
 
+chain_exists()
+{
+    [ $# -lt 1 -o $# -gt 2 ] && { 
+        echo "Usage: chain_exists <chain_name> [table]" >&2
+        return 1
+    }
+    local chain_name="$1" ; shift
+    [ $# -eq 1 ] && local table="--table $1"
+    iptables $table -n --list "$chain_name" >/dev/null 2>&1
+}
+
 DOCKER_INT="docker0"
 DOCKER_NETWORK="172.17.0.0/16"
+
+iptables-save | grep -v -- '-j DOCKER' | iptables-restore
+chain_exists DOCKER && iptables -X DOCKER
+chain_exists DOCKER nat && iptables -t nat -X DOCKER
 
 iptables -N DOCKER
 iptables -t nat -N DOCKER
