@@ -1,8 +1,7 @@
 #!/bin/bash
 
-chain_exists()
-{
-    [ $# -lt 1 -o $# -gt 2 ] && { 
+chain_exists() {
+    [ $# -lt 1 -o $# -gt 2 ] && {
         echo "Usage: chain_exists <chain_name> [table]" >&2
         return 1
     }
