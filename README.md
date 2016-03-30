@@ -2,7 +2,7 @@
 
 ## Installation
 ### Requirement
-Make sure to use the scripts from `https://github.com/juliengk/csf-pre_post_sh`
+Make sure to use the scripts from https://github.com/juliengk/csf-pre_post_sh
 
 ### Install
 Installation is quite straightforward:
