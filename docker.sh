@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PATH="/bin:/sbin:/usr/bin:/usr/sbin"
+
 chain_exists() {
     [ $# -lt 1 -o $# -gt 2 ] && {
         echo "Usage: chain_exists <chain_name> [table]" >&2
