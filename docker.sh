@@ -2,6 +2,8 @@
 
 DOCKER_DIR="/bin"
 IPTABLES_DIR="/sbin"
+SYS_DIR="/usr/bin"
+
 
 chain_exists() {
     [ $# -lt 1 -o $# -gt 2 ] && {
@@ -16,7 +18,7 @@ chain_exists() {
 DOCKER_INT="docker0"
 DOCKER_NETWORK="172.17.0.0/16"
 
-${IPTABLES_DIR}/iptables-save | grep -v -- '-j DOCKER' | ${IPTABLES_DIR}/iptables-restore
+${IPTABLES_DIR}/iptables-save | ${SYS_DIR}/grep -v -- '-j DOCKER' | ${IPTABLES_DIR}/iptables-restore
 chain_exists DOCKER && ${IPTABLES_DIR}/iptables -X DOCKER
 chain_exists DOCKER nat && ${IPTABLES_DIR}/iptables -t nat -X DOCKER
 
@@ -34,22 +36,22 @@ ${IPTABLES_DIR}/iptables -t nat -A POSTROUTING -s ${DOCKER_NETWORK} ! -o ${DOCKE
 
 containers=`${DOCKER_DIR}/docker ps -q`
 
-if [ `echo ${containers} | wc -c` -gt "1" ] ; then
+if [ `echo ${containers} | ${SYS_DIR}/wc -c` -gt "1" ] ; then
         for container in ${containers} ; do
-                rules=`${DOCKER_DIR}/docker port ${container} | sed 's/ //g'`
+                rules=`${DOCKER_DIR}/docker port ${container} | ${SYS_DIR}/sed 's/ //g'`
 
-                if [ `echo ${rules} | wc -c` -gt "1" ] ; then
+                if [ `echo ${rules} | ${SYS_DIR}/wc -c` -gt "1" ] ; then
                         ipaddr=`${DOCKER_DIR}/docker inspect -f "{{.NetworkSettings.IPAddress}}" ${container}`
 
                         for rule in ${rules} ; do
-                                src=`echo ${rule} | awk -F'->' '{ print $2 }'`
-                                dst=`echo ${rule} | awk -F'->' '{ print $1 }'`
+                                src=`echo ${rule} | ${SYS_DIR}/awk -F'->' '{ print $2 }'`
+                                dst=`echo ${rule} | ${SYS_DIR}/awk -F'->' '{ print $1 }'`
 
-                                src_ip=`echo ${src} | awk -F':' '{ print $1 }'`
-                                src_port=`echo ${src} | awk -F':' '{ print $2 }'`
+                                src_ip=`echo ${src} | ${SYS_DIR}/awk -F':' '{ print $1 }'`
+                                src_port=`echo ${src} | ${SYS_DIR}/awk -F':' '{ print $2 }'`
 
-                                dst_port=`echo ${dst} | awk -F'/' '{ print $1 }'`
-                                dst_proto=`echo ${dst} | awk -F'/' '{ print $2 }'`
+                                dst_port=`echo ${dst} | ${SYS_DIR}/awk -F'/' '{ print $1 }'`
+                                dst_proto=`echo ${dst} | ${SYS_DIR}/awk -F'/' '{ print $2 }'`
 
                                 ${IPTABLES_DIR}/iptables -A DOCKER -d ${ipaddr}/32 ! -i ${DOCKER_INT} -o ${DOCKER_INT} -p ${dst_proto} -m ${dst_proto} --dport ${dst_port} -j ACCEPT
 
