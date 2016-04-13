@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 chain_exists() {
     [ $# -lt 1 -o $# -gt 2 ] && {
         echo "Usage: chain_exists <chain_name> [table]" >&2
