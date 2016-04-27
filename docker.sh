@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 chain_exists() {
     [ $# -lt 1 -o $# -gt 2 ] && {
