@@ -38,7 +38,13 @@ if [ `echo ${containers} | wc -c` -gt "1" ] ; then
                 rules=`docker port ${container} | sed 's/ //g'`
 
                 if [ `echo ${rules} | wc -c` -gt "1" ] ; then
-                        ipaddr=`docker inspect -f "{{.NetworkSettings.IPAddress}}" ${container}`
+			netmode=`docker inspect -f "{{.HostConfig.NetworkMode}}" ${container}`
+
+			if [ $netmode == "default" ]; then
+				ipaddr=`docker inspect -f "{{.NetworkSettings.IPAddress}}" ${container}`
+			else
+				ipaddr=`docker inspect -f "{{.NetworkSettings.Networks.${netmode}.IPAddress}}" ${container}`
+			fi
 
                         for rule in ${rules} ; do
                                 src=`echo ${rule} | awk -F'->' '{ print $2 }'`
