@@ -22,6 +22,9 @@ chain_exists DOCKER nat && iptables -t nat -X DOCKER
 iptables -N DOCKER
 iptables -t nat -N DOCKER
 
+iptables -N DOCKER-ISOLATION
+
+iptables -A FORWARD -j DOCKER-ISOLATION
 iptables -A FORWARD -o ${DOCKER_INT} -j DOCKER
 iptables -A FORWARD -o ${DOCKER_INT} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -A FORWARD -i ${DOCKER_INT} ! -o ${DOCKER_INT} -j ACCEPT
@@ -30,6 +33,8 @@ iptables -A FORWARD -i ${DOCKER_INT} -o ${DOCKER_INT} -j ACCEPT
 iptables -t nat -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
 iptables -t nat -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
 iptables -t nat -A POSTROUTING -s ${DOCKER_NETWORK} ! -o ${DOCKER_INT} -j MASQUERADE
+
+iptables -A DOCKER-ISOLATION -j RETURN
 
 containers=`docker ps -q`
 
@@ -41,8 +46,11 @@ if [ `echo ${containers} | wc -c` -gt "1" ] ; then
 			netmode=`docker inspect -f "{{.HostConfig.NetworkMode}}" ${container}`
 
 			if [ $netmode == "default" ]; then
+				DOCKER_NET_INT=${DOCKER_INT}
 				ipaddr=`docker inspect -f "{{.NetworkSettings.IPAddress}}" ${container}`
 			else
+				networkid=`docker inspect -f "{{.NetworkSettings.Networks.${netmode}.NetworkID}}" ${container} | cut -c -12`
+				DOCKER_NET_INT="br-${networkid}"
 				ipaddr=`docker inspect -f "{{.NetworkSettings.Networks.${netmode}.IPAddress}}" ${container}`
 			fi
 
@@ -56,14 +64,14 @@ if [ `echo ${containers} | wc -c` -gt "1" ] ; then
                                 dst_port=`echo ${dst} | awk -F'/' '{ print $1 }'`
                                 dst_proto=`echo ${dst} | awk -F'/' '{ print $2 }'`
 
-                                iptables -A DOCKER -d ${ipaddr}/32 ! -i ${DOCKER_INT} -o ${DOCKER_INT} -p ${dst_proto} -m ${dst_proto} --dport ${dst_port} -j ACCEPT
+                                iptables -A DOCKER -d ${ipaddr}/32 ! -i ${DOCKER_NET_INT} -o ${DOCKER_NET_INT} -p ${dst_proto} -m ${dst_proto} --dport ${dst_port} -j ACCEPT
 
                                 iptables -t nat -A POSTROUTING -s ${ipaddr}/32 -d ${ipaddr}/32 -p ${dst_proto} -m ${dst_proto} --dport ${dst_port} -j MASQUERADE
 
                                 if [ $src_ip = "0.0.0.0" ] ; then
-                                        iptables -t nat -A DOCKER ! -i ${DOCKER_INT} -p ${dst_proto} -m ${dst_proto} --dport ${src_port} -j DNAT --to-destination ${ipaddr}:${dst_port}
+                                        iptables -t nat -A DOCKER ! -i ${DOCKER_NET_INT} -p ${dst_proto} -m ${dst_proto} --dport ${src_port} -j DNAT --to-destination ${ipaddr}:${dst_port}
                                 else
-                                        iptables -t nat -A DOCKER -d ${src_ip}/32 ! -i ${DOCKER_INT} -p ${dst_proto} -m ${dst_proto} --dport ${src_port} -j DNAT --to-destination ${ipaddr}:${dst_port}
+                                        iptables -t nat -A DOCKER -d ${src_ip}/32 ! -i ${DOCKER_NET_INT} -p ${dst_proto} -m ${dst_proto} --dport ${src_port} -j DNAT --to-destination ${ipaddr}:${dst_port}
                                 fi
                         done
                 fi
