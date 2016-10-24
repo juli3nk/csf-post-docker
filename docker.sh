@@ -68,7 +68,7 @@ if [ `echo ${containers} | wc -c` -gt "1" ] ; then
 
                                 iptables -t nat -A POSTROUTING -s ${ipaddr}/32 -d ${ipaddr}/32 -p ${dst_proto} -m ${dst_proto} --dport ${dst_port} -j MASQUERADE
 
-                                if [ $src_ip = "0.0.0.0" ] ; then
+                                if [ $src_ip == "0.0.0.0" ] ; then
                                         iptables -t nat -A DOCKER ! -i ${DOCKER_NET_INT} -p ${dst_proto} -m ${dst_proto} --dport ${src_port} -j DNAT --to-destination ${ipaddr}:${dst_port}
                                 else
                                         iptables -t nat -A DOCKER -d ${src_ip}/32 ! -i ${DOCKER_NET_INT} -p ${dst_proto} -m ${dst_proto} --dport ${src_port} -j DNAT --to-destination ${ipaddr}:${dst_port}
