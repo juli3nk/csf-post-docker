@@ -45,7 +45,6 @@ iptables -N DOCKER-ISOLATION
 
 iptables -t nat -N DOCKER
 
-iptables -A DOCKER-ISOLATION -j RETURN
 iptables -A FORWARD -j DOCKER-ISOLATION
 add_to_forward ${DOCKER_INT}
 
@@ -66,8 +65,8 @@ if [ `echo ${containers} | wc -c` -gt "1" ]; then
 			DOCKER_NET_INT="br-$(docker inspect -f \"{{.NetworkSettings.Networks.${netmode}.NetworkID}}\" ${container} | cut -c -12)"
 			ipaddr=`docker inspect -f "{{.NetworkSettings.Networks.${netmode}.IPAddress}}" ${container}`
 
-			add_to_docker_isolation ${DOCKER_INT} ${DOCKER_NET_INT}
 			add_to_docker_isolation ${DOCKER_NET_INT} ${DOCKER_INT}
+			add_to_docker_isolation ${DOCKER_INT} ${DOCKER_NET_INT}
 
 			for net in `docker network ls | awk '{ print $2 }' | grep -Ev "bridge|host|null|ID|${netmode}"`; do
 				dint="br-$(docker network inspect -f '{{.Id}}' ${net} | cut -c -12)"
@@ -109,3 +108,6 @@ if [ `echo ${containers} | wc -c` -gt "1" ]; then
                 fi
         done
 fi
+
+iptables -A DOCKER-ISOLATION -j RETURN
+iptables -t nat -I DOCKER -i ${DOCKER_INT} -j RETURN
