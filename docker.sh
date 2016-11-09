@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 export PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -27,10 +27,7 @@ add_to_docker_isolation() {
 	local int_in=$1
 	local int_out=$2
 
-	iptables -C -A DOCKER-ISOLATION -i ${int_in} -o ${int_out} -j DROP > /dev/null 2>&1
-	if [ $? -eq 0 ]; then
-		iptables -A DOCKER-ISOLATION -i ${int_in} -o ${int_out} -j DROP
-	fi
+	iptables -A DOCKER-ISOLATION -i ${int_in} -o ${int_out} -j DROP
 }
 
 DOCKER_INT="docker0"
@@ -52,6 +49,22 @@ iptables -t nat -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
 iptables -t nat -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
 iptables -t nat -A POSTROUTING -s ${DOCKER_NETWORK} ! -o ${DOCKER_INT} -j MASQUERADE
 
+bridges=`docker network ls -q --filter='Driver=bridge'`
+
+for bridge in $bridges; do
+	DOCKER_NET_INT="br-$(echo $bridge | cut -c -12)"
+	subnet=`docker network inspect -f '{{(index .IPAM.Config 0).Subnet}}' $bridge`
+
+	iptables -t nat -A POSTROUTING -s ${subnet} ! -o ${DOCKER_NET_INT} -j MASQUERADE
+	iptables -t nat -A DOCKER -i ${DOCKER_NET_INT} -j RETURN
+
+	for other_bridge in $bridges; do
+		if [ $other_bridge != $bridge ]; then
+			add_to_docker_isolation br-$bridge br-$other_bridge
+                fi
+        done
+done
+
 containers=`docker ps -q`
 
 if [ `echo ${containers} | wc -c` -gt "1" ]; then
@@ -62,17 +75,11 @@ if [ `echo ${containers} | wc -c` -gt "1" ]; then
 			DOCKER_NET_INT=${DOCKER_INT}
 			ipaddr=`docker inspect -f "{{.NetworkSettings.IPAddress}}" ${container}`
 		else
-			DOCKER_NET_INT="br-$(docker inspect -f \"{{.NetworkSettings.Networks.${netmode}.NetworkID}}\" ${container} | cut -c -12)"
+			DOCKER_NET_INT=br-$(docker inspect -f "{{.NetworkSettings.Networks.${netmode}.NetworkID}}" ${container} | cut -c -12)
 			ipaddr=`docker inspect -f "{{.NetworkSettings.Networks.${netmode}.IPAddress}}" ${container}`
 
 			add_to_docker_isolation ${DOCKER_NET_INT} ${DOCKER_INT}
 			add_to_docker_isolation ${DOCKER_INT} ${DOCKER_NET_INT}
-
-			for net in `docker network ls | awk '{ print $2 }' | grep -Ev "bridge|host|null|ID|${netmode}"`; do
-				dint="br-$(docker network inspect -f '{{.Id}}' ${net} | cut -c -12)"
-
-				add_to_docker_isolation ${DOCKER_NET_INT} ${dint}
-			done
 
 			add_to_forward ${DOCKER_NET_INT}
 
