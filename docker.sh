@@ -62,7 +62,7 @@ if [ `echo ${containers} | wc -c` -gt "1" ]; then
 			DOCKER_NET_INT=${DOCKER_INT}
 			ipaddr=`docker inspect -f "{{.NetworkSettings.IPAddress}}" ${container}`
 		else
-			DOCKER_NET_INT="br-$(docker inspect -f \"{{.NetworkSettings.Networks.${netmode}.NetworkID}}\" ${container} | cut -c -12)"
+			DOCKER_NET_INT="br-$(docker inspect -f "{{.NetworkSettings.Networks.${netmode}.NetworkID}}" ${container} | cut -c -12)"
 			ipaddr=`docker inspect -f "{{.NetworkSettings.Networks.${netmode}.IPAddress}}" ${container}`
 
 			add_to_docker_isolation ${DOCKER_NET_INT} ${DOCKER_INT}
