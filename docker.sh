@@ -63,7 +63,7 @@ iptables -t nat -A POSTROUTING -s ${DOCKER_NETWORK} ! -o ${DOCKER_INT} -j MASQUE
 bridges=`docker network ls -q --filter='Driver=bridge'`
 
 for bridge in $bridges; do
-    DOCKER_NET_INT=`docker network inspect -f '{{"br-$bridge" | or (index .Options "com.docker.network.bridge.name")}}' $bridge`
+    DOCKER_NET_INT=`docker network inspect -f '{{"'br-$bridge'" | or (index .Options "com.docker.network.bridge.name")}}' $bridge`
     subnet=`docker network inspect -f '{{(index .IPAM.Config 0).Subnet}}' $bridge`
 
     add_to_nat ${DOCKER_NET_INT} ${subnet}
@@ -81,7 +81,7 @@ if [ `echo ${containers} | wc -c` -gt "1" ]; then
             ipaddr=`docker inspect -f "{{.NetworkSettings.IPAddress}}" ${container}`
         else
             bridge=$(docker inspect -f "{{.NetworkSettings.Networks.${netmode}.NetworkID}}" ${container} | cut -c -12)
-            DOCKER_NET_INT=`docker network inspect -f '{{"br-$bridge" | or (index .Options "com.docker.network.bridge.name")}}' $bridge`
+            DOCKER_NET_INT=`docker network inspect -f '{{"'br-$bridge'" | or (index .Options "com.docker.network.bridge.name")}}' $bridge`
             ipaddr=`docker inspect -f "{{.NetworkSettings.Networks.${netmode}.IPAddress}}" ${container}`
         fi
 
