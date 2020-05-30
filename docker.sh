@@ -80,9 +80,9 @@ if [ `echo ${containers} | wc -c` -gt "1" ]; then
             DOCKER_NET_INT=${DOCKER_INT}
             ipaddr=`docker inspect -f "{{.NetworkSettings.IPAddress}}" ${container}`
         else
-            bridge=$(docker inspect -f "{{.NetworkSettings.Networks.${netmode}.NetworkID}}" ${container} | cut -c -12)
+            bridge=$(docker inspect -f "{{with index .NetworkSettings.Networks \"${netmode}\"}}{{.NetworkID}}{{end}}" ${container} | cut -c -12)
             DOCKER_NET_INT=`docker network inspect -f '{{"'br-$bridge'" | or (index .Options "com.docker.network.bridge.name")}}' $bridge`
-            ipaddr=`docker inspect -f "{{.NetworkSettings.Networks.${netmode}.IPAddress}}" ${container}`
+            ipaddr=`docker inspect -f "{{with index .NetworkSettings.Networks \"${netmode}\"}}{{.IPAddress}}{{end}}" ${container}`
         fi
 
         rules=`docker port ${container} | sed 's/ //g'`
